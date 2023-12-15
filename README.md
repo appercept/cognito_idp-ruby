@@ -1,4 +1,4 @@
-# CognitoIdp
+# CognitoIdp [![Ruby](https://github.com/appercept/cognito_idp-ruby/actions/workflows/main.yml/badge.svg)](https://github.com/appercept/cognito_idp-ruby/actions/workflows/main.yml)
 
 Client for interacting with Amazon Cognito IdP (User Pools) endpoints.
 
