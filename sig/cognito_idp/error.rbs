@@ -1,0 +1,13 @@
+module CognitoIdp
+  class Error < StandardError
+    attr_reader error: String
+    attr_reader error_description: String?
+    attr_reader http_status: Integer?
+
+    def initialize: (error: String, ?error_description: String?, ?http_status: Integer?) -> void
+
+    private
+
+    def build_message: () -> String
+  end
+end

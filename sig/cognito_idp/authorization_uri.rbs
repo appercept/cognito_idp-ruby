@@ -1,0 +1,25 @@
+module CognitoIdp
+  class AuthorizationUri
+    attr_reader client_id: String
+    attr_reader code_challenge_method: String?
+    attr_reader code_challenge: String?
+    attr_reader domain: String
+    attr_reader idp_identifier: String?
+    attr_reader identity_provider: String?
+    attr_reader nonce: String?
+    attr_reader redirect_uri: String
+    attr_reader response_type: Symbol
+    attr_reader scope: String | Array[String] | nil
+    attr_reader state: String?
+
+    def initialize: (client_id: String, domain: String, redirect_uri: String, ?response_type: Symbol, **untyped) -> void
+
+    def to_s: () -> String
+
+    private
+
+    def params: () -> Hash[Symbol, untyped]
+
+    def scope_string: () -> String?
+  end
+end

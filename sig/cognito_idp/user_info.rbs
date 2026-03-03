@@ -1,0 +1,11 @@
+module CognitoIdp
+  class UserInfo
+    def initialize: (Hash[String | Symbol, untyped]) -> void
+
+    private
+
+    def method_missing: (Symbol, *untyped) -> untyped
+
+    def respond_to_missing?: (Symbol, ?bool) -> bool
+  end
+end
