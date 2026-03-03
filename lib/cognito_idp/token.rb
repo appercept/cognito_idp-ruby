@@ -15,6 +15,12 @@ module CognitoIdp
       @expires_at = Time.now + expires_in unless expires_in.nil?
     end
 
+    def expired?
+      return false if expires_at.nil?
+
+      Time.now >= expires_at
+    end
+
     def inspect
       "#<#{self.class}:0x#{object_id.to_s(16)} " \
         "@access_token=#{access_token.nil? ? "nil" : "[REDACTED]"}, " \

@@ -16,6 +16,46 @@ RSpec.describe CognitoIdp::Token do
   it { expect(token.expires_at).to be_nil }
   it { expect(token.refresh_token).to be_nil }
 
+  describe "#expired?" do
+    context "when expires_in is nil" do
+      it { expect(token.expired?).to be false }
+    end
+
+    context "when token has not expired" do
+      let(:token_hash) { {"expires_in" => 3600} }
+
+      it { expect(token.expired?).to be false }
+    end
+
+    context "when token has expired" do
+      let(:token_hash) { {"expires_in" => 3600} }
+
+      before do
+        Timecop.freeze
+        token # force creation at frozen time
+        Timecop.freeze(Time.now + 3601)
+      end
+
+      after { Timecop.return }
+
+      it { expect(token.expired?).to be true }
+    end
+
+    context "when token is at the exact expiry time" do
+      let(:token_hash) { {"expires_in" => 3600} }
+
+      before do
+        Timecop.freeze
+        token # force creation at frozen time
+        Timecop.freeze(Time.now + 3600)
+      end
+
+      after { Timecop.return }
+
+      it { expect(token.expired?).to be true }
+    end
+  end
+
   describe "#inspect" do
     context "when token values are set" do
       let(:token_hash) do
