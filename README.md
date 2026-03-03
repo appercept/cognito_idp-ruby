@@ -14,7 +14,125 @@ If bundler is not being used to manage dependencies, install the gem by executin
 
 ## Usage
 
-TODO: Write usage instructions here
+### Client setup
+
+```ruby
+client = CognitoIdp::Client.new(
+  client_id: "your_client_id",
+  domain: "your-domain.auth.eu-west-1.amazoncognito.com",
+  client_secret: "your_client_secret" # optional, depends on app client config
+)
+```
+
+### Authorization URI
+
+Build a URL to redirect users to the Cognito hosted UI:
+
+```ruby
+url = client.authorization_uri(
+  redirect_uri: "https://example.com/auth/callback",
+  scope: %w[openid email profile],
+  state: SecureRandom.hex
+)
+```
+
+PKCE is supported via `code_challenge` and `code_challenge_method`:
+
+```ruby
+url = client.authorization_uri(
+  redirect_uri: "https://example.com/auth/callback",
+  code_challenge: challenge,
+  code_challenge_method: "S256"
+)
+```
+
+### Exchanging an authorization code for tokens
+
+```ruby
+token = client.get_token(
+  grant_type: "authorization_code",
+  code: params[:code],
+  redirect_uri: "https://example.com/auth/callback"
+)
+
+token.access_token  # => "eyJra..."
+token.id_token      # => "eyJra..."
+token.refresh_token # => "eyJjd..."
+token.expires_in    # => 3600
+token.expired?      # => false
+```
+
+With PKCE, pass the `code_verifier`:
+
+```ruby
+token = client.get_token(
+  grant_type: "authorization_code",
+  code: params[:code],
+  redirect_uri: "https://example.com/auth/callback",
+  code_verifier: stored_verifier
+)
+```
+
+### Client credentials
+
+```ruby
+token = client.get_token(
+  grant_type: "client_credentials",
+  scope: "https://api.example.com/orders.read"
+)
+```
+
+### Refreshing tokens
+
+```ruby
+token = client.get_token(
+  grant_type: "refresh_token",
+  refresh_token: token.refresh_token
+)
+```
+
+### User info
+
+Accepts an access token string or a `Token` object:
+
+```ruby
+user_info = client.get_user_info(token)
+
+user_info.sub      # => "248289761001"
+user_info.email    # => "janedoe@example.com"
+user_info.username # => "j.doe"
+```
+
+### Revoking tokens
+
+Revokes a refresh token. Accepts a token string or a `Token` object (which uses its `refresh_token`):
+
+```ruby
+client.revoke_token(token)
+```
+
+### Logout URI
+
+```ruby
+url = client.logout_uri(
+  logout_uri: "https://example.com/signed-out",
+  redirect_uri: "https://example.com/"
+)
+```
+
+### Error handling
+
+All API calls raise `CognitoIdp::Error` on non-2xx responses:
+
+```ruby
+begin
+  client.get_token(grant_type: "authorization_code", code: "expired_code")
+rescue CognitoIdp::Error => e
+  e.error             # => "invalid_grant"
+  e.error_description # => "Authorization code has expired"
+  e.http_status       # => 400
+end
+```
 
 ## Development
 
