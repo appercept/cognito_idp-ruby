@@ -1,0 +1,3 @@
+module CognitoIdp
+  VERSION: String
+end

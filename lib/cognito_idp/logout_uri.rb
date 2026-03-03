@@ -2,7 +2,7 @@
 
 module CognitoIdp
   class LogoutUri
-    attr_accessor :client_id, :domain, :logout_uri, :redirect_uri, :response_type, :scope, :state
+    attr_reader :client_id, :domain, :logout_uri, :redirect_uri, :response_type, :scope, :state
 
     def initialize(client_id:, domain:, **options)
       @client_id = client_id

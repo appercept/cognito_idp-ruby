@@ -2,7 +2,7 @@
 
 module CognitoIdp
   class AuthorizationUri
-    attr_accessor :client_id, :code_challenge_method, :code_challenge, :domain,
+    attr_reader :client_id, :code_challenge_method, :code_challenge, :domain,
       :idp_identifier, :identity_provider, :nonce, :redirect_uri, :response_type,
       :scope, :state
 

@@ -15,6 +15,25 @@ RSpec.describe CognitoIdp::Client do
     expect(CognitoIdp::VERSION).not_to be nil
   end
 
+  describe "#inspect" do
+    it "redacts client_secret when set" do
+      client = described_class.new(client_id: "id", client_secret: "super-secret", domain: "auth.example.com")
+      expect(client.inspect).to include("@client_secret=[REDACTED]")
+      expect(client.inspect).not_to include("super-secret")
+    end
+
+    it "shows nil when client_secret is not set" do
+      client = described_class.new(client_id: "id", domain: "auth.example.com")
+      expect(client.inspect).to include("@client_secret=nil")
+    end
+
+    it "shows non-secret attributes" do
+      client = described_class.new(client_id: "id", domain: "auth.example.com")
+      expect(client.inspect).to include('@client_id="id"')
+      expect(client.inspect).to include('@domain="auth.example.com"')
+    end
+  end
+
   describe "#authorization_uri" do
     subject(:uri) { client.authorization_uri(redirect_uri: redirect_uri) }
 
@@ -86,6 +105,7 @@ RSpec.describe CognitoIdp::Client do
           Faraday::Adapter::Test::Stubs.new do |stub|
             stub.post("https://auth.example.com/oauth2/token") do |env|
               fail "Authorization is present.#{env.request_headers}" if env.request_headers.key?("Authorization")
+              [200, {"Content-Type" => "application/json"}, response_payload.to_json]
             end
           end
         end
@@ -101,8 +121,9 @@ RSpec.describe CognitoIdp::Client do
           Faraday::Adapter::Test::Stubs.new do |stub|
             stub.post("https://auth.example.com/oauth2/token") do |env|
               id_and_secret = "#{client_id}:#{client_secret}"
-              basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+              basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
               fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
+              [200, {"Content-Type" => "application/json"}, response_payload.to_json]
             end
           end
         end
@@ -129,7 +150,66 @@ RSpec.describe CognitoIdp::Client do
         end
         let(:error) { "invalid_request" }
 
-        it { is_expected.to be_nil }
+        it "raises a CognitoIdp::Error" do
+          expect { token }.to raise_error(CognitoIdp::Error) do |e|
+            expect(e.error).to eq("invalid_request")
+            expect(e.http_status).to eq(400)
+          end
+        end
+      end
+
+      context "when response is an error with error_description" do
+        let(:stubs) do
+          Faraday::Adapter::Test::Stubs.new do |stub|
+            stub.post("https://auth.example.com/oauth2/token") do |env|
+              [400, {"Content-Type" => "application/json"}, response_payload.to_json]
+            end
+          end
+        end
+        let(:response_payload) do
+          {error: "invalid_grant", error_description: "Authorization code has expired"}
+        end
+
+        it "raises a CognitoIdp::Error with error_description" do
+          expect { token }.to raise_error(CognitoIdp::Error) do |e|
+            expect(e.error).to eq("invalid_grant")
+            expect(e.error_description).to eq("Authorization code has expired")
+            expect(e.message).to eq("invalid_grant: Authorization code has expired")
+            expect(e.http_status).to eq(400)
+          end
+        end
+      end
+
+      context "when response is a server error" do
+        let(:stubs) do
+          Faraday::Adapter::Test::Stubs.new do |stub|
+            stub.post("https://auth.example.com/oauth2/token") do |env|
+              [500, {"Content-Type" => "text/plain"}, "Internal Server Error"]
+            end
+          end
+        end
+
+        it "raises a CognitoIdp::Error with http_error" do
+          expect { token }.to raise_error(CognitoIdp::Error) do |e|
+            expect(e.error).to eq("http_error")
+            expect(e.error_description).to eq("the server responded with status 500")
+            expect(e.http_status).to eq(500)
+          end
+        end
+      end
+
+      context "when response is an error it does not yield" do
+        let(:stubs) do
+          Faraday::Adapter::Test::Stubs.new do |stub|
+            stub.post("https://auth.example.com/oauth2/token") do |env|
+              [400, {"Content-Type" => "application/json"}, {error: "invalid_request"}.to_json]
+            end
+          end
+        end
+
+        it "does not yield the block" do
+          expect { |b| client.get_token(grant_type: grant_type, code: code, redirect_uri: redirect_uri, &b) }.to raise_error(CognitoIdp::Error)
+        end
       end
     end
 
@@ -143,7 +223,7 @@ RSpec.describe CognitoIdp::Client do
         Faraday::Adapter::Test::Stubs.new do |stub|
           stub.post("https://auth.example.com/oauth2/token", params_matcher) do |env|
             id_and_secret = "#{client_id}:#{client_secret}"
-            basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+            basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
             fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
             [200, {"Content-Type" => "application/json"}, response_payload.to_json]
           end
@@ -192,7 +272,12 @@ RSpec.describe CognitoIdp::Client do
         end
         let(:error) { "invalid_request" }
 
-        it { is_expected.to be_nil }
+        it "raises a CognitoIdp::Error" do
+          expect { token }.to raise_error(CognitoIdp::Error) do |e|
+            expect(e.error).to eq("invalid_request")
+            expect(e.http_status).to eq(400)
+          end
+        end
       end
     end
 
@@ -243,6 +328,7 @@ RSpec.describe CognitoIdp::Client do
           Faraday::Adapter::Test::Stubs.new do |stub|
             stub.post("https://auth.example.com/oauth2/token") do |env|
               fail "Authorization is present.#{env.request_headers}" if env.request_headers.key?("Authorization")
+              [200, {"Content-Type" => "application/json"}, response_payload.to_json]
             end
           end
         end
@@ -258,8 +344,9 @@ RSpec.describe CognitoIdp::Client do
           Faraday::Adapter::Test::Stubs.new do |stub|
             stub.post("https://auth.example.com/oauth2/token") do |env|
               id_and_secret = "#{client_id}:#{client_secret}"
-              basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+              basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
               fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
+              [200, {"Content-Type" => "application/json"}, response_payload.to_json]
             end
           end
         end
@@ -286,7 +373,12 @@ RSpec.describe CognitoIdp::Client do
         end
         let(:error) { "invalid_request" }
 
-        it { is_expected.to be_nil }
+        it "raises a CognitoIdp::Error" do
+          expect { token }.to raise_error(CognitoIdp::Error) do |e|
+            expect(e.error).to eq("invalid_request")
+            expect(e.http_status).to eq(400)
+          end
+        end
       end
     end
 
@@ -300,7 +392,7 @@ RSpec.describe CognitoIdp::Client do
         Faraday::Adapter::Test::Stubs.new do |stub|
           stub.post("https://auth.example.com/oauth2/token", params_matcher) do |env|
             id_and_secret = "#{client_id}:#{client_secret}"
-            basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+            basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
             fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
             [200, {"Content-Type" => "application/json"}, response_payload.to_json]
           end
@@ -349,7 +441,12 @@ RSpec.describe CognitoIdp::Client do
         end
         let(:error) { "invalid_request" }
 
-        it { is_expected.to be_nil }
+        it "raises a CognitoIdp::Error" do
+          expect { token }.to raise_error(CognitoIdp::Error) do |e|
+            expect(e.error).to eq("invalid_request")
+            expect(e.http_status).to eq(400)
+          end
+        end
       end
     end
   end
@@ -453,7 +550,199 @@ RSpec.describe CognitoIdp::Client do
       end
       let(:error) { "invalid_request" }
 
-      it { is_expected.to be_nil }
+      it "raises a CognitoIdp::Error" do
+        expect { user_info }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("invalid_request")
+          expect(e.http_status).to eq(400)
+        end
+      end
+    end
+
+    context "when response is an unauthorized error" do
+      let(:token) { "ACCESS_TOKEN" }
+      let(:access_token) { token }
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/userInfo") do |env|
+            [401, {"Content-Type" => "application/json"}, {error: "invalid_token", error_description: "Access token is expired"}.to_json]
+          end
+        end
+      end
+
+      it "raises a CognitoIdp::Error with error_description" do
+        expect { user_info }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("invalid_token")
+          expect(e.error_description).to eq("Access token is expired")
+          expect(e.http_status).to eq(401)
+        end
+      end
+    end
+
+    context "when response is a server error" do
+      let(:token) { "ACCESS_TOKEN" }
+      let(:access_token) { token }
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/userInfo") do |env|
+            [500, {"Content-Type" => "text/plain"}, "Internal Server Error"]
+          end
+        end
+      end
+
+      it "raises a CognitoIdp::Error with http_error" do
+        expect { user_info }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("http_error")
+          expect(e.error_description).to eq("the server responded with status 500")
+          expect(e.http_status).to eq(500)
+        end
+      end
+    end
+
+    context "when response is an error it does not yield" do
+      let(:token) { "ACCESS_TOKEN" }
+      let(:access_token) { token }
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/userInfo") do |env|
+            [400, {"Content-Type" => "application/json"}, {error: "invalid_request"}.to_json]
+          end
+        end
+      end
+
+      it "does not yield the block" do
+        expect { |b| client.get_user_info(access_token, &b) }.to raise_error(CognitoIdp::Error)
+      end
+    end
+  end
+
+  describe "#revoke_token" do
+    let(:refresh_token) { "eyJj3example" }
+
+    context "when token is a String" do
+      subject(:revoke) { client.revoke_token(refresh_token) }
+
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke", params_matcher) do |env|
+            [200, {}, ""]
+          end
+        end
+      end
+      let(:params_matcher) do
+        ->(request_body) do
+          params = URI.decode_www_form(request_body)
+          params.include?(["client_id", client_id]) &&
+            params.include?(["token", refresh_token])
+        end
+      end
+
+      it "sends the token and client_id" do
+        revoke
+      end
+    end
+
+    context "when token is a Token" do
+      subject(:revoke) { client.revoke_token(token) }
+
+      let(:token) do
+        CognitoIdp::Token.new(
+          access_token: "eyJra1example",
+          id_token: "eyJra2example",
+          token_type: "Bearer",
+          expires_in: 7200,
+          refresh_token: refresh_token
+        )
+      end
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke", params_matcher) do |env|
+            [200, {}, ""]
+          end
+        end
+      end
+      let(:params_matcher) do
+        ->(request_body) do
+          params = URI.decode_www_form(request_body)
+          params.include?(["client_id", client_id]) &&
+            params.include?(["token", refresh_token])
+        end
+      end
+
+      it "extracts the refresh_token from the Token" do
+        revoke
+      end
+    end
+
+    context "when client_secret is not set" do
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            fail "Authorization is present.#{env.request_headers}" if env.request_headers.key?("Authorization")
+            [200, {}, ""]
+          end
+        end
+      end
+
+      it "does not add authorization" do
+        client.revoke_token(refresh_token)
+      end
+    end
+
+    context "when client_secret is set" do
+      let(:client_secret) { "SECRET" }
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            id_and_secret = "#{client_id}:#{client_secret}"
+            basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
+            fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
+            [200, {}, ""]
+          end
+        end
+      end
+
+      it "adds basic authorization" do
+        client.revoke_token(refresh_token)
+      end
+    end
+
+    context "when response is an error" do
+      subject(:revoke) { client.revoke_token(refresh_token) }
+
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            [400, {"Content-Type" => "application/json"}, {error: "invalid_request"}.to_json]
+          end
+        end
+      end
+
+      it "raises a CognitoIdp::Error" do
+        expect { revoke }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("invalid_request")
+          expect(e.http_status).to eq(400)
+        end
+      end
+    end
+
+    context "when response is a server error" do
+      subject(:revoke) { client.revoke_token(refresh_token) }
+
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            [500, {"Content-Type" => "text/plain"}, "Internal Server Error"]
+          end
+        end
+      end
+
+      it "raises a CognitoIdp::Error with http_error" do
+        expect { revoke }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("http_error")
+          expect(e.error_description).to eq("the server responded with status 500")
+          expect(e.http_status).to eq(500)
+        end
+      end
     end
   end
 
@@ -470,7 +759,7 @@ RSpec.describe CognitoIdp::Client do
     it { expect(decoded_uri_params).to include(["client_id", client_id]) }
 
     context "when given additional valid options" do
-      subject(:uri) { client.authorization_uri(redirect_uri: redirect_uri, state: state) }
+      subject(:uri) { client.logout_uri(redirect_uri: redirect_uri, state: state) }
 
       let(:redirect_uri) { "https://www.example.com/auth/callback" }
       let(:state) { "STATE" }

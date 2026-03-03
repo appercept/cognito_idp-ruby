@@ -1,6 +1,32 @@
 module CognitoIdp
-  module Client
-    VERSION: String
-    # See the writing guide of rbs: https://github.com/ruby/rbs#guides
+  class Client
+    attr_reader adapter: Symbol
+    attr_reader client_id: String
+    attr_reader client_secret: String?
+    attr_reader domain: String
+
+    def initialize: (client_id: String, domain: String, ?client_secret: String?, ?adapter: Symbol, ?stubs: untyped) -> void
+
+    def inspect: () -> String
+
+    def authorization_uri: (redirect_uri: String, **untyped) -> String
+
+    def get_token: (grant_type: String | Symbol, **untyped) -> Token
+                 | (grant_type: String | Symbol, **untyped) { (Token) -> void } -> Token
+
+    def get_user_info: (Token | String) -> UserInfo
+                     | (Token | String) { (UserInfo) -> void } -> UserInfo
+
+    def revoke_token: (Token | String) -> void
+
+    def logout_uri: (**untyped) -> String
+
+    private
+
+    def connection: () -> untyped
+
+    def handle_error_response: (untyped) -> void
+
+    def basic_authorization_headers: () -> Hash[String, String]?
   end
 end
