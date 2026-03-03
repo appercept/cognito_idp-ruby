@@ -35,7 +35,7 @@ module CognitoIdp
         scope: options[:scope]
       }.compact
       response = connection.post("/oauth2/token", params, basic_authorization_headers)
-      return unless response.success?
+      handle_error_response(response)
 
       token = Token.new(response.body)
       yield(token) if block_given?
@@ -50,7 +50,7 @@ module CognitoIdp
         token
       end
       response = connection.post("/oauth2/userInfo", nil, {"Authorization" => "Bearer #{access_token}"})
-      return unless response.success?
+      handle_error_response(response)
 
       user_info = UserInfo.new(response.body)
       yield(user_info) if block_given?
@@ -73,6 +73,25 @@ module CognitoIdp
         conn.request :url_encoded
         conn.response :json, content_type: "application/json"
         conn.adapter adapter, @stubs
+      end
+    end
+
+    def handle_error_response(response)
+      return if response.success?
+
+      body = response.body
+      if body.is_a?(Hash) && body["error"]
+        raise Error.new(
+          error: body["error"],
+          error_description: body["error_description"],
+          http_status: response.status
+        )
+      else
+        raise Error.new(
+          error: "http_error",
+          error_description: "the server responded with status #{response.status}",
+          http_status: response.status
+        )
       end
     end
 
