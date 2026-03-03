@@ -1,0 +1,16 @@
+module CognitoIdp
+  class Token
+    attr_reader access_token: String?
+    attr_reader id_token: String?
+    attr_reader token_type: String?
+    attr_reader expires_at: Time?
+    attr_reader expires_in: Integer?
+    attr_reader refresh_token: String?
+
+    def initialize: (Hash[String | Symbol, untyped]) -> void
+
+    def expired?: () -> bool
+
+    def inspect: () -> String
+  end
+end

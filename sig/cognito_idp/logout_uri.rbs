@@ -1,0 +1,21 @@
+module CognitoIdp
+  class LogoutUri
+    attr_reader client_id: String
+    attr_reader domain: String
+    attr_reader logout_uri: String?
+    attr_reader redirect_uri: String?
+    attr_reader response_type: Symbol?
+    attr_reader scope: String | Array[String] | nil
+    attr_reader state: String?
+
+    def initialize: (client_id: String, domain: String, **untyped) -> void
+
+    def to_s: () -> String
+
+    private
+
+    def params: () -> Hash[Symbol, untyped]
+
+    def scope_string: () -> String?
+  end
+end
