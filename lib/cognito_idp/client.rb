@@ -15,6 +15,14 @@ module CognitoIdp
       @stubs = stubs
     end
 
+    def inspect
+      "#<#{self.class}:0x#{object_id.to_s(16)} " \
+        "@adapter=#{adapter.inspect}, " \
+        "@client_id=#{client_id.inspect}, " \
+        "@client_secret=#{client_secret.nil? ? "nil" : "[REDACTED]"}, " \
+        "@domain=#{domain.inspect}>"
+    end
+
     def authorization_uri(redirect_uri:, **options)
       AuthorizationUri.new(
         client_id: client_id,
