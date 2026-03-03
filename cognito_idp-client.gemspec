@@ -32,6 +32,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "base64"
   spec.add_dependency "faraday", "~> 2.7"
+  spec.add_dependency "ostruct"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
