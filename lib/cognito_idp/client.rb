@@ -5,7 +5,7 @@ require "faraday"
 
 module CognitoIdp
   class Client
-    attr_accessor :adapter, :client_id, :client_secret, :domain
+    attr_reader :adapter, :client_id, :client_secret, :domain
 
     def initialize(client_id:, domain:, client_secret: nil, adapter: Faraday.default_adapter, stubs: nil)
       @adapter = adapter
