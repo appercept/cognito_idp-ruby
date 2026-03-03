@@ -65,6 +65,19 @@ module CognitoIdp
       user_info
     end
 
+    def revoke_token(token)
+      refresh_token = case token
+      when Token
+        token.refresh_token
+      else
+        token
+      end
+
+      params = {client_id: client_id, token: refresh_token}
+      response = connection.post("/oauth2/revoke", params, basic_authorization_headers)
+      handle_error_response(response)
+    end
+
     def logout_uri(**options)
       LogoutUri.new(
         client_id: client_id,

@@ -615,6 +615,137 @@ RSpec.describe CognitoIdp::Client do
     end
   end
 
+  describe "#revoke_token" do
+    let(:refresh_token) { "eyJj3example" }
+
+    context "when token is a String" do
+      subject(:revoke) { client.revoke_token(refresh_token) }
+
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke", params_matcher) do |env|
+            [200, {}, ""]
+          end
+        end
+      end
+      let(:params_matcher) do
+        ->(request_body) do
+          params = URI.decode_www_form(request_body)
+          params.include?(["client_id", client_id]) &&
+            params.include?(["token", refresh_token])
+        end
+      end
+
+      it "sends the token and client_id" do
+        revoke
+      end
+    end
+
+    context "when token is a Token" do
+      subject(:revoke) { client.revoke_token(token) }
+
+      let(:token) do
+        CognitoIdp::Token.new(
+          access_token: "eyJra1example",
+          id_token: "eyJra2example",
+          token_type: "Bearer",
+          expires_in: 7200,
+          refresh_token: refresh_token
+        )
+      end
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke", params_matcher) do |env|
+            [200, {}, ""]
+          end
+        end
+      end
+      let(:params_matcher) do
+        ->(request_body) do
+          params = URI.decode_www_form(request_body)
+          params.include?(["client_id", client_id]) &&
+            params.include?(["token", refresh_token])
+        end
+      end
+
+      it "extracts the refresh_token from the Token" do
+        revoke
+      end
+    end
+
+    context "when client_secret is not set" do
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            fail "Authorization is present.#{env.request_headers}" if env.request_headers.key?("Authorization")
+            [200, {}, ""]
+          end
+        end
+      end
+
+      it "does not add authorization" do
+        client.revoke_token(refresh_token)
+      end
+    end
+
+    context "when client_secret is set" do
+      let(:client_secret) { "SECRET" }
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            id_and_secret = "#{client_id}:#{client_secret}"
+            basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
+            fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
+            [200, {}, ""]
+          end
+        end
+      end
+
+      it "adds basic authorization" do
+        client.revoke_token(refresh_token)
+      end
+    end
+
+    context "when response is an error" do
+      subject(:revoke) { client.revoke_token(refresh_token) }
+
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            [400, {"Content-Type" => "application/json"}, {error: "invalid_request"}.to_json]
+          end
+        end
+      end
+
+      it "raises a CognitoIdp::Error" do
+        expect { revoke }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("invalid_request")
+          expect(e.http_status).to eq(400)
+        end
+      end
+    end
+
+    context "when response is a server error" do
+      subject(:revoke) { client.revoke_token(refresh_token) }
+
+      let(:stubs) do
+        Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("https://auth.example.com/oauth2/revoke") do |env|
+            [500, {"Content-Type" => "text/plain"}, "Internal Server Error"]
+          end
+        end
+      end
+
+      it "raises a CognitoIdp::Error with http_error" do
+        expect { revoke }.to raise_error(CognitoIdp::Error) do |e|
+          expect(e.error).to eq("http_error")
+          expect(e.error_description).to eq("the server responded with status 500")
+          expect(e.http_status).to eq(500)
+        end
+      end
+    end
+  end
+
   describe "#logout_uri" do
     subject(:uri) { client.logout_uri }
 
