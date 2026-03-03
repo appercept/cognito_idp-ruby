@@ -759,7 +759,7 @@ RSpec.describe CognitoIdp::Client do
     it { expect(decoded_uri_params).to include(["client_id", client_id]) }
 
     context "when given additional valid options" do
-      subject(:uri) { client.authorization_uri(redirect_uri: redirect_uri, state: state) }
+      subject(:uri) { client.logout_uri(redirect_uri: redirect_uri, state: state) }
 
       let(:redirect_uri) { "https://www.example.com/auth/callback" }
       let(:state) { "STATE" }
