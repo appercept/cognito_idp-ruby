@@ -102,7 +102,7 @@ RSpec.describe CognitoIdp::Client do
           Faraday::Adapter::Test::Stubs.new do |stub|
             stub.post("https://auth.example.com/oauth2/token") do |env|
               id_and_secret = "#{client_id}:#{client_secret}"
-              basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+              basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
               fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
               [200, {"Content-Type" => "application/json"}, response_payload.to_json]
             end
@@ -204,7 +204,7 @@ RSpec.describe CognitoIdp::Client do
         Faraday::Adapter::Test::Stubs.new do |stub|
           stub.post("https://auth.example.com/oauth2/token", params_matcher) do |env|
             id_and_secret = "#{client_id}:#{client_secret}"
-            basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+            basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
             fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
             [200, {"Content-Type" => "application/json"}, response_payload.to_json]
           end
@@ -325,7 +325,7 @@ RSpec.describe CognitoIdp::Client do
           Faraday::Adapter::Test::Stubs.new do |stub|
             stub.post("https://auth.example.com/oauth2/token") do |env|
               id_and_secret = "#{client_id}:#{client_secret}"
-              basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+              basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
               fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
               [200, {"Content-Type" => "application/json"}, response_payload.to_json]
             end
@@ -373,7 +373,7 @@ RSpec.describe CognitoIdp::Client do
         Faraday::Adapter::Test::Stubs.new do |stub|
           stub.post("https://auth.example.com/oauth2/token", params_matcher) do |env|
             id_and_secret = "#{client_id}:#{client_secret}"
-            basic_auth = "Basic #{Base64.urlsafe_encode64(id_and_secret)}"
+            basic_auth = "Basic #{Base64.strict_encode64(id_and_secret)}"
             fail "Basic Authorization is missing." unless env.request_headers["Authorization"] == basic_auth
             [200, {"Content-Type" => "application/json"}, response_payload.to_json]
           end

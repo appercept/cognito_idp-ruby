@@ -99,7 +99,7 @@ module CognitoIdp
       return if client_secret.nil?
 
       client_id_and_secret = "#{client_id}:#{client_secret}"
-      {"Authorization" => "Basic #{Base64.urlsafe_encode64(client_id_and_secret)}"}
+      {"Authorization" => "Basic #{Base64.strict_encode64(client_id_and_secret)}"}
     end
   end
 end
