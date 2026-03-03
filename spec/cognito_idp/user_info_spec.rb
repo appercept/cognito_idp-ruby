@@ -17,6 +17,18 @@ RSpec.describe CognitoIdp::UserInfo do
   it { expect(user_info.email_verified).to be_nil }
   it { expect(user_info.phone_number_verified).to be_nil }
 
+  describe "#respond_to?" do
+    context "when attribute exists" do
+      let(:user_info_hash) { {"email" => "jane@example.com"} }
+
+      it { expect(user_info).to respond_to(:email) }
+    end
+
+    context "when attribute does not exist" do
+      it { expect(user_info).not_to respond_to(:nonexistent) }
+    end
+  end
+
   context "when given attributes" do
     let(:user_info_hash) do
       {

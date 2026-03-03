@@ -14,7 +14,7 @@ module CognitoIdp
     end
 
     def respond_to_missing?(method, include_private = false)
-      true
+      @attributes.respond_to?(method, include_private) || super
     end
   end
 end
