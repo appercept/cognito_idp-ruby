@@ -15,6 +15,25 @@ RSpec.describe CognitoIdp::Client do
     expect(CognitoIdp::VERSION).not_to be nil
   end
 
+  describe "#inspect" do
+    it "redacts client_secret when set" do
+      client = described_class.new(client_id: "id", client_secret: "super-secret", domain: "auth.example.com")
+      expect(client.inspect).to include("@client_secret=[REDACTED]")
+      expect(client.inspect).not_to include("super-secret")
+    end
+
+    it "shows nil when client_secret is not set" do
+      client = described_class.new(client_id: "id", domain: "auth.example.com")
+      expect(client.inspect).to include("@client_secret=nil")
+    end
+
+    it "shows non-secret attributes" do
+      client = described_class.new(client_id: "id", domain: "auth.example.com")
+      expect(client.inspect).to include('@client_id="id"')
+      expect(client.inspect).to include('@domain="auth.example.com"')
+    end
+  end
+
   describe "#authorization_uri" do
     subject(:uri) { client.authorization_uri(redirect_uri: redirect_uri) }
 
